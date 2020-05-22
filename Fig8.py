@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import math
 
-toPrt = True
+toPrt = False
 
 def to_numpy(file_name, sheet_name):
     """converts CDI data excel file to numpy array""" 
@@ -85,41 +85,8 @@ def plotBar(title, mean_vals, DNstd, PK_concs = ('0', '1', '2.5', '10', '50')):
         y_scale += gradation
     plt.yticks(np.arange(0, y_scale, gradation))
 
-##############  get data into numpy arrays   ######################
-#numparrPMCA = get_vals("CDI13 030B.xls", "Plate", curve_col_start = 10)
-numparrFFIoneP1 = get_vals("CDI13 004.xls", "Plate", curve_col_start = 9)
-#numparrFFIoneP2 = get_vals("CDI13 004b.xls", "Plate", curve_col_start = 9)
-#numparrvCJDFC= get_vals("CDI 12 007 PLATE B.xls", "Plate", curve_col_start = 10)
-##numparrFFIoneThal= get_vals("CDI 12 016 PLATE A.xls", "Plate", curve_col_start = 9)
-##numparrvCJDthal= get_vals("CDI 12 016 PLATE B.xls", "Plate", curve_col_start = 9, curve_start = 1, curve_end =3)
-##numparrsCJDthal= get_vals("CDI13 004b.xls", "Plate", curve_col_start = 6)
-##numparrsCJDMM2TFC= get_vals("CDI 12 008 PLATE B.xls", "Plate", curve_col_start = 10)
-##numparrsCJDMM2CFC= get_vals("CDI 12 009 PLATE A.xls","Plate", curve_col_start = 10)
-##numparrNonCJDone = get_vals("CDI13 007.xls","Plate", curve_col_start = 10)
-##numparrNonCJDtwo = get_vals("CDI13 007b.xls","Plate", curve_col_start = 10)
-
 def getD_N_vals(arr, first_col,last_col ):
     return arr[3:,first_col:last_col+1]-arr[0:3,first_col:last_col+1] 
-
-##DN_vals_PMCA        = getD_N_vals(numparrPMCA,          0, 4)
-##DN_vals_PMCA        = getD_N_vals(numparrPMCA,          5, 9)
-#DN_vals_case1       = getD_N_vals(numparrFFIoneP1,      8, 8)
-#DN_vals_case1       = np.concatenate((DN_vals_case1,getD_N_vals(numparrFFIoneP2, 0, 2)), axis = 1) #had to glue data from separate plates
-##DN_vals_case2       = getD_N_vals(numparrFFIoneP2,      5, 8)
-##DN_vals_FFIoneThal  = getD_N_vals(numparrFFIoneThal,    0, 5)
-##DN_vals_FFItwoThal  = getD_N_vals(numparrFFIoneThal,    6, 8)
-##DN_vals_FFItwoThal  = np.concatenate((DN_vals_FFItwoThal, getD_N_vals(numparrvCJDthal, 0, 2)), axis = 1) #had to glue data from separate plates
-##DN_vals_vCJDthal    = getD_N_vals(numparrvCJDthal,      3, 8)
-##DN_vals_vCJDFC      = getD_N_vals(numparrvCJDFC,        0, 9)###have to change vol analysed to 10ul!####
-##DN_vals_sCJDMM1FC   = getD_N_vals(numparrFFIoneP1,      2, 5)
-##DN_vals_sCJDMM1Th   = getD_N_vals(numparrsCJDthal,      0, 5)
-##DN_vals_sCJDMM2TFC  = getD_N_vals(numparrsCJDMM2TFC,    0, 9)
-##DN_vals_sCJDMM2CFC  = getD_N_vals(numparrsCJDMM2CFC,    0, 9)
-##DN_vals_58          = getD_N_vals(numparrNonCJDone,     2, 4)
-##DN_vals_39          = getD_N_vals(numparrNonCJDone,     7, 9)
-##DN_vals_54          = getD_N_vals(numparrNonCJDtwo,     2, 4)
-##DN_vals_65          = getD_N_vals(numparrNonCJDtwo,     7, 9)
-##DN_nonCJD   = DN_vals_58, DN_vals_39, DN_vals_54, DN_vals_65
 
 def printResSen(DN_array, label, pos2_5 = 2, pos50 = 5): 
     """for printing means and std for:
@@ -141,16 +108,14 @@ def printResSen(DN_array, label, pos2_5 = 2, pos50 = 5):
     print("Mean sen val and std ",label,":", senMean, senSD)
 
 
-##printResSen(DN_vals_case1, "FFI case 1")
-##printResSen(DN_vals_FFItwoThal, "FFI case 2 Thal")
-
-def _PrPC_PrPSc(val_array, first_col, last_col):
+def _PrPC_PrPSc(val_array, col_dict):
     """calculates mean/std N value, D value, D-N value\
-    for each column in range, returns result as a dataframe
+    for each column in a dictionary of columns (dict keys)\
+    with associated str labels (dict values)
     """
     val_array = np.array(val_array, dtype=np.float64)
-    data_dict  = {"label":["N","Nstd","D","Dstd","D-N","D-Nstd"]}
-    for column in range(first_col, last_col+1):
+    data_dict  = {"metric":["N","Nstd","D","Dstd","D-N","D-Nstd"]}
+    for column in col_dict:
         data_list = []
         data_list.append(np.mean(val_array[0:3,column]))
         data_list.append(np.std(val_array[0:3,column]))
@@ -158,12 +123,58 @@ def _PrPC_PrPSc(val_array, first_col, last_col):
         data_list.append(np.std(val_array[3:,column]))
         data_list.append(np.mean(val_array[3:,column] - val_array[0:3,column]))
         data_list.append(np.std(val_array[3:,column] - val_array[0:3,column]))
-        data_dict[str(column)] = data_list
+        data_dict[str(column)+": "+col_dict[column]] = data_list
         del data_list
     return pd.DataFrame(data_dict)
-    
-print(_PrPC_PrPSc(numparrFFIoneP1, 0, 3))
 
+
+
+##############  get data into numpy arrays   ######################
+##numparrPMCA =         get_vals("CDI13 030B.xls",          "Plate", curve_col_start = 10)
+numparrFFIoneP1 =     get_vals("CDI13 004.xls",           "Plate", curve_col_start = 9)
+numparrFFIoneP2 =     get_vals("CDI13 004b.xls",          "Plate", curve_col_start = 9)
+##numparrvCJDFC=        get_vals("CDI 12 007 PLATE B.xls",  "Plate", curve_col_start = 10)
+##numparrFFIoneThal=    get_vals("CDI 12 016 PLATE A.xls",  "Plate", curve_col_start = 9)
+##numparrvCJDthal=      get_vals("CDI 12 016 PLATE B.xls",  "Plate", curve_col_start = 9, curve_start = 1, curve_end =3)
+##numparrsCJDthal=      get_vals("CDI13 004b.xls",          "Plate", curve_col_start = 6)
+##numparrsCJDMM2TFC=    get_vals("CDI 12 008 PLATE B.xls",  "Plate", curve_col_start = 10)
+##numparrsCJDMM2CFC=    get_vals("CDI 12 009 PLATE A.xls",  "Plate", curve_col_start = 10)
+##numparrNonCJDone =    get_vals("CDI13 007.xls",           "Plate", curve_col_start = 10)
+##numparrNonCJDtwo =    get_vals("CDI13 007b.xls",          "Plate", curve_col_start = 10)
+
+
+##DN_vals_PMCA        = getD_N_vals(numparrPMCA,          0, 4)
+##DN_vals_PMCA        = getD_N_vals(numparrPMCA,          5, 9)
+DN_vals_case1       = getD_N_vals(numparrFFIoneP1,      8, 8)
+DN_vals_case1       = np.concatenate((DN_vals_case1,getD_N_vals(numparrFFIoneP2, 0, 2)), axis = 1) #had to glue data from separate plates
+##DN_vals_case2       = getD_N_vals(numparrFFIoneP2,      5, 8)
+##DN_vals_FFIoneThal  = getD_N_vals(numparrFFIoneThal,    0, 5)
+##DN_vals_FFItwoThal  = getD_N_vals(numparrFFIoneThal,    6, 8)
+##DN_vals_FFItwoThal  = np.concatenate((DN_vals_FFItwoThal, getD_N_vals(numparrvCJDthal, 0, 2)), axis = 1) #had to glue data from separate plates
+##DN_vals_vCJDthal    = getD_N_vals(numparrvCJDthal,      3, 8)
+##DN_vals_vCJDFC      = getD_N_vals(numparrvCJDFC,        0, 9)###have to change vol analysed to 10ul!####
+##DN_vals_sCJDMM1FC   = getD_N_vals(numparrFFIoneP1,      2, 5)
+##DN_vals_sCJDMM1Th   = getD_N_vals(numparrsCJDthal,      0, 5)
+##DN_vals_sCJDMM2TFC  = getD_N_vals(numparrsCJDMM2TFC,    0, 9)
+##DN_vals_sCJDMM2CFC  = getD_N_vals(numparrsCJDMM2CFC,    0, 9)
+##DN_vals_58          = getD_N_vals(numparrNonCJDone,     2, 4)
+##DN_vals_39          = getD_N_vals(numparrNonCJDone,     7, 9)
+##DN_vals_54          = getD_N_vals(numparrNonCJDtwo,     2, 4)
+##DN_vals_65          = getD_N_vals(numparrNonCJDtwo,     7, 9)
+##DN_nonCJD   = DN_vals_58, DN_vals_39, DN_vals_54, DN_vals_65
+
+
+########## PrPres and senPrPSc #########################
+##printResSen(DN_vals_case1, "FFI case 1")
+##printResSen(DN_vals_FFItwoThal, "FFI case 2 Thal")
+
+################ N, D and D-N  #########################    
+print(_PrPC_PrPSc(numparrFFIoneP1, {0:"FFI cases 1",
+                                    6:"FFI cases 2"}))
+
+
+
+#print(_PrPC_PrPSc(numparrFFIoneP2, 0, 8))
 ###########  get values for plotting ###################
 ##mean_valsPMCA, DNstdPMCA = means_SDs(DN_vals_PMCA)
 ##print("Mean vals PMCA\n=======\n", mean_valsPMCA)
