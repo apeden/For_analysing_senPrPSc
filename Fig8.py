@@ -21,13 +21,13 @@ def substrate_blanks(numparr, *blank_rows):
     if toPrt: print("Numpy array minus blanks\n=======\n",numparr)
     return numparr
 
-def std_curve(numparr, curve_start_col, curve_start = 0, curve_end = 4):
+def std_curve(numparr, curve_start_col, curve_start, curve_end):
     """CDI standard curve coeff and intercept on y axis"""
-    X = np.array([0.25, 0.5, 0.75, 1][curve_start - 1:curve_end])
+    X = np.array([0.25, 0.5, 0.75, 1][curve_start:curve_end+1])
     curve_points = [numparr[4:7, curve_start_col+1],
                   numparr[4:7, curve_start_col],
                   numparr[1:4, curve_start_col+1],
-                  numparr[1:4, curve_start_col]][curve_start - 1:curve_end]
+                  numparr[1:4, curve_start_col]][curve_start:curve_end+1]
     y = np.array(curve_points,dtype = float)
     if toPrt: print("y vals for standard curve\n=======\n",y)
     result = np.polyfit(X,y,1)
@@ -45,7 +45,7 @@ def relate_to_PrP(numparr, coeff, intercept, ul_analysed = 25):
     if toPrt: print("Values as ug PrP per gram brain \n========\n",numparr)
     return numparr
 
-def get_vals(file_name, sheet_name, curve_col_start, curve_start = 1, curve_end =4):
+def get_vals(file_name, sheet_name, curve_col_start, curve_start = 0, curve_end= 3):
     """gets data and converts CDI vals to concentrations of PrP
     Returns as numpy array 
     """
@@ -107,7 +107,6 @@ def printResSen(DN_array, label, pos2_5 = 2, pos50 = 5):
     senMean, senSD = means_SDs(DN_array[:,pos2_5]-DN_array[:,pos50])
     print("Mean sen val and std ",label,":", senMean, senSD)
 
-
 def _PrPC_PrPSc(val_array, col_dict):
     """calculates mean/std N value, D value, D-N value\
     for each column in a dictionary of columns (dict keys)\
@@ -127,22 +126,31 @@ def _PrPC_PrPSc(val_array, col_dict):
         del data_list
     return pd.DataFrame(data_dict)
 
-
-
-##############  get data into numpy arrays   ######################
+##############  get data into numpy arrays                 ######################
 ##numparrPMCA =         get_vals("CDI13 030B.xls",          "Plate", curve_col_start = 10)
 numparrFFIoneP1 =     get_vals("CDI13 004.xls",           "Plate", curve_col_start = 9)
 numparrFFIoneP2 =     get_vals("CDI13 004b.xls",          "Plate", curve_col_start = 9)
 ##numparrvCJDFC=        get_vals("CDI 12 007 PLATE B.xls",  "Plate", curve_col_start = 10)
-##numparrFFIoneThal=    get_vals("CDI 12 016 PLATE A.xls",  "Plate", curve_col_start = 9)
+numparrFFIoneThal=    get_vals("CDI 12 016 PLATE A.xls",  "Plate", curve_col_start = 9)
 ##numparrvCJDthal=      get_vals("CDI 12 016 PLATE B.xls",  "Plate", curve_col_start = 9, curve_start = 1, curve_end =3)
 ##numparrsCJDthal=      get_vals("CDI13 004b.xls",          "Plate", curve_col_start = 6)
-##numparrsCJDMM2TFC=    get_vals("CDI 12 008 PLATE B.xls",  "Plate", curve_col_start = 10)
+numparrsCJDMM2TFC=    get_vals("CDI 12 008 PLATE B.xls",  "Plate", curve_col_start = 10)
 ##numparrsCJDMM2CFC=    get_vals("CDI 12 009 PLATE A.xls",  "Plate", curve_col_start = 10)
 ##numparrNonCJDone =    get_vals("CDI13 007.xls",           "Plate", curve_col_start = 10)
 ##numparrNonCJDtwo =    get_vals("CDI13 007b.xls",          "Plate", curve_col_start = 10)
+numparrsFFIone2011 =  get_vals("CDI 11 013 A FFI vs vCJD vs ALZ.xls", "Plate", curve_col_start = 10)
+numparrsFFItwo2011 =  get_vals("CDI 11 014 FFI and vCJD A.xls", "Plate", curve_col_start = 10, curve_end = 2)
+numparrsFFIone2011b =  get_vals("CDI 11 015 FFI and sCJD A.xls", "Plate", curve_col_start = 10)
+numparrsFFItwo2011b =  get_vals("CDI 11 016 FFI and Alz stability A.xls", "Plate", curve_col_start = 10, curve_end = 2)
+numparrsFFIone2011c =  get_vals("CDI 11 017 vCJD and FFI meltcurve A.xls", "Plate", curve_col_start = 10)
+numparrsFFItwo2011c =  get_vals("CDI 11 018 FFI vs sCJD plate A.xls", "Plate", curve_col_start = 10)
+numparrsFFIone2011d =  get_vals("CDI 11 019 FFI and LBD A.xls", "Plate", curve_col_start = 10)
+numparrsFFIone2011e =  get_vals("CDI 11 020 FFI and vCJD A.xls", "Plate", curve_col_start = 10)
+numparrsFFItwo2011d =  get_vals("CDI 11 020 FFI and vCJD B.xls", "Plate", curve_col_start = 10)
+numparrsFFIone2011f =  get_vals("CDI 11 023 melt curves.xls", "Plate", curve_col_start = 10)
+numparrFFIoneThal2 = get_vals("CDI 12 001 PLATE B.xls", "Plate", curve_col_start = 10)
 
-
+##############  numpy arrays of calibrate D - N CDI vals   ######################
 ##DN_vals_PMCA        = getD_N_vals(numparrPMCA,          0, 4)
 ##DN_vals_PMCA        = getD_N_vals(numparrPMCA,          5, 9)
 DN_vals_case1       = getD_N_vals(numparrFFIoneP1,      8, 8)
@@ -169,8 +177,52 @@ DN_vals_case1       = np.concatenate((DN_vals_case1,getD_N_vals(numparrFFIoneP2,
 ##printResSen(DN_vals_FFItwoThal, "FFI case 2 Thal")
 
 ################ N, D and D-N  #########################    
-print(_PrPC_PrPSc(numparrFFIoneP1, {0:"FFI cases 1",
-                                    6:"FFI cases 2"}))
+
+
+results = [#a list of dataframes
+(_PrPC_PrPSc(numparrFFIoneP1, {0:"FFI cases 1 FC",
+                                    6:"FFI cases 2 FC"})),
+(_PrPC_PrPSc(numparrsFFIone2011, {3:"FFI cases 1 FC 2011"})),
+(_PrPC_PrPSc(numparrsFFItwo2011, {3:"FFI cases 2 FC 2011"})),
+(_PrPC_PrPSc(numparrsFFIone2011b, {3:"FFI cases 1 FC 2011b"})),
+(_PrPC_PrPSc(numparrsFFItwo2011b, {9:"FFI cases 2 FC 2011b"})),
+(_PrPC_PrPSc(numparrsFFIone2011c, {9:"FFI cases 1 FC 2011c"})),
+(_PrPC_PrPSc(numparrsFFItwo2011c, {9:"FFI cases 2 FC 2011c"})),
+(_PrPC_PrPSc(numparrsFFIone2011d, {9:"FFI cases 1 FC 2011d"})),
+(_PrPC_PrPSc(numparrsFFIone2011e, {9:"FFI cases 1 FC 2011e"})),
+(_PrPC_PrPSc(numparrsFFIone2011f, {9:"FFI cases 1 FC 2011f"})),
+(_PrPC_PrPSc(numparrsFFItwo2011d, {9:"FFI cases 2 FC 2011d"})),
+(_PrPC_PrPSc(numparrFFIoneThal, {0:"FFI cases 1 Thal",
+                                    6:"FFI cases 2 Thal"})),
+(_PrPC_PrPSc(numparrsCJDMM2TFC, {3:"sFI FC"})),
+(_PrPC_PrPSc(numparrFFIoneThal2, {3:"FFI cases 2 Thal 2"}))
+]
+
+print("An example of one data frame\n",results[0])
+master_df = results[0].T
+for df in results[1:]:
+    master_df = master_df.append(df.loc[:, df.columns != 'metric'].T)
+print("All the data transposed\n",master_df)
+master_df = master_df.reset_index()# reset index as 0, 1... etc. What was the index is now a column called 'index'
+print("All the data, reindexed\n",master_df)
+
+def getMeanN_D_DN(df, subset):
+    """for a dataframe and a string describing a subset of
+    samples, return of tuple of (mean N, std N, mean D, std D,
+    mean D-N, std D-N
+    """
+    subset_df = df[df['index'].str.contains(subset)]
+    print("All data with ",subset)
+    data_dict  = {"metric":["N","Nstd","D","Dstd","D-N","D-Nstd","n"]}
+    mean_std = []
+    for i in range (0,5,2): 
+        series = pd.to_numeric(subset_df[i], errors='ignore')
+        mean_std += [series.mean(), series.std()]
+    mean_std.append(int(len(subset_df)))
+    data_dict[subset] = mean_std
+    return pd.DataFrame(data_dict)
+
+print(getMeanN_D_DN(master_df, "FFI cases 2"))
 
 
 
