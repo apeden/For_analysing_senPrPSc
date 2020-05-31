@@ -108,12 +108,13 @@ def printResSen(DN_array, label, pos2_5 = 2, pos50 = 5):
     print("Mean sen val and std ",label,":", senMean, senSD)
 
 def _PrPC_PrPSc(val_array, col_dict):
-    """calculates mean/std N value, D value, D-N value\
-    for each column in a dictionary of columns (dict keys)\
+    """calculates REPLICATE mean/std N value, D value, D-N value\
+    for each excel column in a dictionary of columns (dict keys)\
     with associated str labels (dict values)
+    returns a dataframe
     """
     val_array = np.array(val_array, dtype=np.float64)
-    data_dict  = {"metric":["N","Nstd","D","Dstd","D-N","D-Nstd"]}
+    data_dict  = {"metric":["N","Nstd","D","Dstd","D-N","D-Nstd","n"]}
     for column in col_dict:
         data_list = []
         data_list.append(np.mean(val_array[0:3,column]))
@@ -122,9 +123,85 @@ def _PrPC_PrPSc(val_array, col_dict):
         data_list.append(np.std(val_array[3:,column]))
         data_list.append(np.mean(val_array[3:,column] - val_array[0:3,column]))
         data_list.append(np.std(val_array[3:,column] - val_array[0:3,column]))
+        data_list.append(3)             
         data_dict[str(column)+": "+col_dict[column]] = data_list
         del data_list
-    return pd.DataFrame(data_dict)
+    df = pd.DataFrame(data_dict)
+    df = df.T
+    df.columns = df.iloc[0]
+    df = df.drop(df.index[0])
+    #print("Data frame from _PrPC_PrPSc\n",df)
+    return df
+
+
+def collate_PrPC_PrPSC(results):
+    master_df = results[0]
+    #print("master_df\n",master_df)
+    for df in results[1:]:
+        #print(" first df to concat with master df\n",df)
+        master_df = pd.concat([master_df, df.loc[df.index != 'metric',:]])
+    #print("All the _PrPC_PrPSc data combined\n", master_df)
+    #master_df = master_df.reset_index()# reset index as 0, 1... etc. What was the index is now a column called 'index'
+    #print("All the _PrPC_PrPSc data then reindexed\n",master_df)
+    #master_df.columns = master_df.iloc[0]
+    #master_df = master_df.drop(master_df.index[0])
+    #print("All the data, with row[0] now the column names\n",master_df)
+    return master_df
+
+def getMeanN_D_DN(df, subset):
+    """for a dataframe and a string describing a subset of
+    samples, returns of dataframe that looks like:
+    
+    metric        N  Nst  D  Dst   D-N    D-Nstd
+    case label  val  val  val  val  val   val
+    ..     ..    ..   ..   ..   ..   ..    ..
+    """
+    subset_df = df[df.index.str.contains(subset)]
+    #print("All data with ",subset)
+    data_dict  = {"metric":["N","Nstd","D","Dstd","D-N","D-Nstd","n"]}
+    mean_std = []
+    for metric in ["N","D","D-N"]: 
+        series = pd.to_numeric(subset_df[metric], errors='ignore')
+        mean_std += [series.mean(), series.std()]
+    mean_std.append(int(len(subset_df)))
+    data_dict[subset] = mean_std
+    df = pd.DataFrame(data_dict)
+    df = df.T
+    df.columns = df.iloc[0]
+    df = df.drop(df.index[0])
+    #print("getMeanN_D_DN dataframe\n",df)
+    return df
+
+
+def two_bar_sidebyside(df, left_bar_var, right_bar_var, left_bar_std, right_bar_std):    
+    #title = 'resPrPSc vs senPrPSc for thalamus'
+    #print("this is what im about to plot\n", df)
+    #print(type(df.iloc[1,1]))
+    max_fluor = df.iloc[:,1:].max().max()
+    #print("max_fluor is ",df.max().max())
+    maxval = 10**math.ceil(math.log10(max_fluor))
+    while maxval > 3*max_fluor:
+        maxval /= 2
+    markers = maxval/10
+    maxval += markers
+    print("Data to plot for two bar side by side\n",df)
+    N = len(df)
+    ind = np.arange(N)    # the x locations for the groups
+    width = 0.35       # the width of the bars: can also be len(x) sequence
+    #print("Values for N are ",df[left_bar_var])
+    p1 = plt.bar(ind-width/2, df[left_bar_var], width, yerr = df[left_bar_std])
+    p2 = plt.bar(ind+width/2, df[right_bar_var], width, yerr = df[right_bar_std])
+    plt.ylabel(chr(956)+"gPrP/gram brain")
+    #plt.title(title)
+    plt.xticks(ind, df.index)
+    plt.yticks(np.arange(0, maxval, markers))
+    plt.legend((p1[0], p2[0]), (left_bar_var, right_bar_var), loc = "upper left")
+    plt.show()
+
+def assembleBar(compnts):
+    for i in range(len(compnts)):
+        plt.subplot((math.ceil(len(compnts)/2)), 2, i+1)
+        plotBar(*compnts[i])
 
 ##############  get data into numpy arrays                 ######################
 ##numparrPMCA =         get_vals("CDI13 030B.xls",          "Plate", curve_col_start = 10)
@@ -134,12 +211,12 @@ numparrFFIoneP2 =     get_vals("CDI13 004b.xls",          "Plate", curve_col_sta
 numparrFFIoneThal=    get_vals("CDI 12 016 PLATE A.xls",  "Plate", curve_col_start = 9)
 ##numparrvCJDthal=      get_vals("CDI 12 016 PLATE B.xls",  "Plate", curve_col_start = 9, curve_start = 1, curve_end =3)
 ##numparrsCJDthal=      get_vals("CDI13 004b.xls",          "Plate", curve_col_start = 6)
-numparrsCJDMM2TFC=    get_vals("CDI 12 008 PLATE B.xls",  "Plate", curve_col_start = 10)
+numparrsCJDMM2TFC=     get_vals("CDI 12 008 PLATE B.xls",  "Plate", curve_col_start = 10)
 ##numparrsCJDMM2CFC=    get_vals("CDI 12 009 PLATE A.xls",  "Plate", curve_col_start = 10)
 ##numparrNonCJDone =    get_vals("CDI13 007.xls",           "Plate", curve_col_start = 10)
 ##numparrNonCJDtwo =    get_vals("CDI13 007b.xls",          "Plate", curve_col_start = 10)
-numparrsFFIone2011 =  get_vals("CDI 11 013 A FFI vs vCJD vs ALZ.xls", "Plate", curve_col_start = 10)
-numparrsFFItwo2011 =  get_vals("CDI 11 014 FFI and vCJD A.xls", "Plate", curve_col_start = 10, curve_end = 2)
+numparrsFFIone2011 =   get_vals("CDI 11 013 A FFI vs vCJD vs ALZ.xls", "Plate", curve_col_start = 10)
+numparrsFFItwo2011 =   get_vals("CDI 11 014 FFI and vCJD A.xls", "Plate", curve_col_start = 10, curve_end = 2)
 numparrsFFIone2011b =  get_vals("CDI 11 015 FFI and sCJD A.xls", "Plate", curve_col_start = 10)
 numparrsFFItwo2011b =  get_vals("CDI 11 016 FFI and Alz stability A.xls", "Plate", curve_col_start = 10, curve_end = 2)
 numparrsFFIone2011c =  get_vals("CDI 11 017 vCJD and FFI meltcurve A.xls", "Plate", curve_col_start = 10)
@@ -148,13 +225,13 @@ numparrsFFIone2011d =  get_vals("CDI 11 019 FFI and LBD A.xls", "Plate", curve_c
 numparrsFFIone2011e =  get_vals("CDI 11 020 FFI and vCJD A.xls", "Plate", curve_col_start = 10)
 numparrsFFItwo2011d =  get_vals("CDI 11 020 FFI and vCJD B.xls", "Plate", curve_col_start = 10)
 numparrsFFIone2011f =  get_vals("CDI 11 023 melt curves.xls", "Plate", curve_col_start = 10)
-numparrFFIoneThal2 = get_vals("CDI 12 001 PLATE B.xls", "Plate", curve_col_start = 10)
+numparrFFIoneThal2  =  get_vals("CDI 12 001 PLATE B.xls", "Plate", curve_col_start = 10)
 
 ##############  numpy arrays of calibrate D - N CDI vals   ######################
 ##DN_vals_PMCA        = getD_N_vals(numparrPMCA,          0, 4)
 ##DN_vals_PMCA        = getD_N_vals(numparrPMCA,          5, 9)
-DN_vals_case1       = getD_N_vals(numparrFFIoneP1,      8, 8)
-DN_vals_case1       = np.concatenate((DN_vals_case1,getD_N_vals(numparrFFIoneP2, 0, 2)), axis = 1) #had to glue data from separate plates
+DN_vals_case1         = getD_N_vals(numparrFFIoneP1,      8, 8)
+DN_vals_case1         = np.concatenate((DN_vals_case1,getD_N_vals(numparrFFIoneP2, 0, 2)), axis = 1) #had to glue data from separate plates
 ##DN_vals_case2       = getD_N_vals(numparrFFIoneP2,      5, 8)
 ##DN_vals_FFIoneThal  = getD_N_vals(numparrFFIoneThal,    0, 5)
 ##DN_vals_FFItwoThal  = getD_N_vals(numparrFFIoneThal,    6, 8)
@@ -169,16 +246,15 @@ DN_vals_case1       = np.concatenate((DN_vals_case1,getD_N_vals(numparrFFIoneP2,
 ##DN_vals_39          = getD_N_vals(numparrNonCJDone,     7, 9)
 ##DN_vals_54          = getD_N_vals(numparrNonCJDtwo,     2, 4)
 ##DN_vals_65          = getD_N_vals(numparrNonCJDtwo,     7, 9)
-##DN_nonCJD   = DN_vals_58, DN_vals_39, DN_vals_54, DN_vals_65
+##DN_nonCJD           = DN_vals_58, DN_vals_39, DN_vals_54, DN_vals_65
 
 
 ########## PrPres and senPrPSc #########################
 ##printResSen(DN_vals_case1, "FFI case 1")
 ##printResSen(DN_vals_FFItwoThal, "FFI case 2 Thal")
 
+
 ################ N, D and D-N  #########################    
-
-
 results = [#a list of dataframes
 (_PrPC_PrPSc(numparrFFIoneP1, {0:"FFI cases 1 FC",
                                     6:"FFI cases 2 FC"})),
@@ -198,32 +274,14 @@ results = [#a list of dataframes
 (_PrPC_PrPSc(numparrFFIoneThal2, {3:"FFI cases 2 Thal 2"}))
 ]
 
-print("An example of one data frame\n",results[0])
-master_df = results[0].T
-for df in results[1:]:
-    master_df = master_df.append(df.loc[:, df.columns != 'metric'].T)
-print("All the data transposed\n",master_df)
-master_df = master_df.reset_index()# reset index as 0, 1... etc. What was the index is now a column called 'index'
-print("All the data, reindexed\n",master_df)
 
-def getMeanN_D_DN(df, subset):
-    """for a dataframe and a string describing a subset of
-    samples, return of tuple of (mean N, std N, mean D, std D,
-    mean D-N, std D-N
-    """
-    subset_df = df[df['index'].str.contains(subset)]
-    print("All data with ",subset)
-    data_dict  = {"metric":["N","Nstd","D","Dstd","D-N","D-Nstd","n"]}
-    mean_std = []
-    for i in range (0,5,2): 
-        series = pd.to_numeric(subset_df[i], errors='ignore')
-        mean_std += [series.mean(), series.std()]
-    mean_std.append(int(len(subset_df)))
-    data_dict[subset] = mean_std
-    return pd.DataFrame(data_dict)
-
-print(getMeanN_D_DN(master_df, "FFI cases 2"))
-
+master_df = collate_PrPC_PrPSC(results)
+cases1_means_df = getMeanN_D_DN(master_df, "FFI cases 1")
+cases2_means_df = getMeanN_D_DN(master_df, "FFI cases 2")
+sFI_means_df = getMeanN_D_DN(master_df, "sFI")
+FFI_means = pd.concat([cases1_means_df, cases2_means_df, sFI_means_df])
+#print(FFI_means)
+two_bar_sidebyside(FFI_means, "N", "D-N" ,"Nstd","D-Nstd")
 
 
 #print(_PrPC_PrPSc(numparrFFIoneP2, 0, 8))
@@ -257,10 +315,6 @@ print(getMeanN_D_DN(master_df, "FFI cases 2"))
 ##    ["Non CJD", mean_nonCJD, DNstd_nonCJD, ('2.5', '10', '50')]]
 
 #from list, plot
-def assembleBar(compnts):
-    for i in range(len(compnts)):
-        plt.subplot((math.ceil(len(compnts)/2)), 2, i+1)
-        plotBar(*compnts[i])
 
 ##assembleBar(mean_val_list)
 ##plt.subplots_adjust(wspace = 0.4)
